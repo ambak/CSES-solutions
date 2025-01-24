@@ -1,0 +1,168 @@
+#include <bits/stdc++.h>
+using namespace std;
+typedef long long LL;
+
+class Treap {
+public:
+	Treap(LL value) : value(value) {
+		size = 1;
+		weight = rand();
+		left = nullptr;
+		right = nullptr;
+		rev = false;
+		sum = value;
+		mini = value;
+	}
+	static Treap *merge(Treap *A, Treap *B) {
+		push(A);
+		push(B);
+		if (A == nullptr)
+			return B;
+		else if (B == nullptr)
+			return A;
+		else {
+			if (A->weight > B->weight) {
+				A->right = merge(A->right, B);
+				A->size = get_size(A->right) + get_size(A->left) + 1;
+				A->sum = get_sum(A->left) + get_sum(A->right) + A->value;
+				A->mini = min(A->value, min((A->left ? A->left->mini : inf), (A->right ? A->right->mini : inf)));
+				return A;
+			} else {
+				B->left = merge(A, B->left);
+				B->size = get_size(B->left) + get_size(B->right) + 1;
+				B->sum = get_sum(B->left) + get_sum(B->right) + B->value;
+				B->mini = min(B->value, min((B->left ? B->left->mini : inf), (B->right ? B->right->mini : inf)));
+				return B;
+			}
+		}
+	}
+	static void split(Treap *treap, Treap *&A, Treap *&B, int k) {
+		push(treap);
+		if (treap == nullptr) {
+			A = nullptr;
+			B = nullptr;
+		} else {
+			if (get_size(treap->left) < k) {
+				split(treap->right, treap->right, B, k - get_size(treap->left) - 1);
+				A = treap;
+			} else {
+				split(treap->left, A, treap->left, k);
+				B = treap;
+			}
+			treap->size = get_size(treap->left) + get_size(treap->right) + 1;
+			treap->sum = get_sum(treap->left) + get_sum(treap->right) + treap->value;
+			treap->mini = min(treap->value, min((treap->left ? treap->left->mini : inf), (treap->right ? treap->right->mini : inf)));
+		}
+	}
+	static void print(Treap *treap) {
+		push(treap);
+		if (treap == nullptr) return;
+		print(treap->left);
+		cout << treap->value;
+		print(treap->right);
+	}
+	void reverse() {
+		this->rev = true;
+	}
+	static LL get_sum(Treap *treap) {
+		return treap ? treap->sum : 0LL;
+	}
+	static LL get_kth_element(Treap *treap, int k) {
+		int x = 0;
+		push(treap);
+		while (x != k) {
+			push(treap);
+			if (x + get_size(treap->left) == k - 1) {
+				break;
+			}
+			if (x + get_size(treap->left) < k) {
+				x += get_size(treap->left) + 1;
+				treap = treap->right;
+			} else {
+				treap = treap->left;
+			}
+		}
+		return treap->value;
+	}
+	static int get_mini_pos(Treap *treap) {
+		int x = 0;
+		push(treap);
+		const auto mini = treap->mini;
+		while (true) {
+			push(treap);
+			const auto lsize = get_size(treap->left) + 1;
+			if (treap->value == mini) {
+				x += lsize;
+				break;
+			}
+			if (treap->left && treap->left->mini == mini) {
+				treap = treap->left;
+			} else {
+				x += lsize;
+				treap = treap->right;
+			}
+		}
+		return x;
+	}
+	LL get_weight() {
+		return this->weight;
+	}
+	static int get_size(Treap *treap) {
+		return treap ? treap->size : 0;
+	}
+
+private:
+	int size;
+	LL value;
+	LL sum;
+	LL mini;
+	int weight;
+	bool rev;
+	static constexpr LL inf = LLONG_MAX;
+	Treap *left;
+	Treap *right;
+
+	static void push(Treap *treap) {
+		if (treap != nullptr && treap->rev) {
+			treap->rev = false;
+			swap(treap->left, treap->right);
+			if (treap->left != nullptr) {
+				treap->left->rev ^= true;
+			}
+			if (treap->right != nullptr) {
+				treap->right->rev ^= true;
+			}
+		}
+	}
+};
+
+int main() {
+	ios_base::sync_with_stdio(false);
+	cin.tie(0);
+	cout.tie(0);
+	int n;
+	cin >> n;
+	Treap *treap = nullptr, *A = nullptr, *B = nullptr, *C = nullptr, *D = nullptr;
+	for (int i = 1; i <= n; i++) {
+		int x;
+		cin >> x;
+		treap = treap->merge(treap, new Treap(x));
+	}
+	vector<pair<int, int>> res;
+	for (int i = 1; i <= n; i++) {
+		treap->split(treap, A, B, i - 1);
+		int x = B->get_mini_pos(B);
+		if (A->get_size(A) + x != i) {
+			res.push_back({i, A->get_size(A) + x});
+			B->split(B, C, D, x);
+			C->reverse();
+			B = B->merge(C, D);
+		}
+		treap = treap->merge(A, B);
+	}
+	cout << res.size() << "\n";
+	for (auto [a, b] : res) {
+		cout << a << " " << b << "\n";
+	}
+	return 0;
+}
